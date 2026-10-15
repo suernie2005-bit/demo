@@ -2,6 +2,7 @@
 using WebAPI.Data;
 using WebAPI.DTOs.Common;
 using WebAPI.DTOs.SanPham;
+using WebAPI.Exceptions;
 using WebAPI.Models;
 using WebAPI.Services.Interfaces;
 
@@ -109,7 +110,7 @@ public class SanPhamService : ISanPhamService
 
         if (duplicate)
         {
-            throw new InvalidOperationException("Sản phẩm cùng tên trong loại này đã tồn tại.");
+            throw new ConflictException("Sản phẩm cùng tên trong loại này đã tồn tại.");
         }
 
         var sanPham = new SanPham
@@ -153,7 +154,7 @@ public class SanPhamService : ISanPhamService
 
         if (duplicate)
         {
-            throw new InvalidOperationException("Sản phẩm cùng tên trong loại này đã tồn tại.");
+            throw new ConflictException("Sản phẩm cùng tên trong loại này đã tồn tại.");
         }
 
         sanPham.TenSp = ten;
@@ -173,7 +174,7 @@ public class SanPhamService : ISanPhamService
 
         if (sanPham == null)
         {
-            throw new KeyNotFoundException("Không tìm thấy sản phẩm có ID {id}.");
+            throw new KeyNotFoundException($"Không tìm thấy sản phẩm có ID {id}.");
         }
 
         _context.SanPhams.Remove(sanPham);

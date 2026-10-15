@@ -2,6 +2,7 @@
 using WebAPI.Data;
 using WebAPI.DTOs.Common;
 using WebAPI.DTOs.Loai;
+using WebAPI.Exceptions;
 using WebAPI.Models;
 using WebAPI.Services.Interfaces;
 
@@ -75,7 +76,7 @@ public class LoaiService : ILoaiService
 
         if (exists)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 "Tên loại đã tồn tại.");
         }
 
@@ -116,7 +117,7 @@ public class LoaiService : ILoaiService
 
         if (duplicate)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 "Tên loại đã tồn tại.");
         }
 
@@ -147,7 +148,7 @@ public class LoaiService : ILoaiService
 
         if (hasProducts)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 "Không thể xóa loại đang có sản phẩm.");
         }
 
