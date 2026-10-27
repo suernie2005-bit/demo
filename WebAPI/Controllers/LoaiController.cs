@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WebAPI.DTOs.Loai;
+using WebAPI.DTOs.Common;
 using WebAPI.Services.Interfaces;
 
 namespace WebAPI.Controllers;
@@ -16,7 +17,14 @@ public class LoaiController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int page = 1,[FromQuery] int pageSize = 10,[FromQuery] string? sortBy = "id",[FromQuery] string? sortOrder = "asc")
+    [ProducesResponseType(typeof(PagedResultDto<LoaiDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? sortBy = "id",
+        [FromQuery] string? sortOrder = "asc")
     {
         var result = await _service.GetAllAsync(page, pageSize, sortBy, sortOrder);
 
@@ -24,6 +32,9 @@ public class LoaiController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(LoaiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _service.GetByIdAsync(id);
@@ -31,6 +42,10 @@ public class LoaiController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(LoaiDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Create([FromBody] CreateLoaiDto dto)
     {
         var result = await _service.CreateAsync(dto);
@@ -39,13 +54,22 @@ public class LoaiController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update( int id,[FromBody] UpdateLoaiDto dto)
+    [ProducesResponseType(typeof(LoaiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateLoaiDto dto)
     {
         var result = await _service.UpdateAsync(id, dto);
         return Ok(result);
     }
 
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Delete(int id)
     {
         await _service.DeleteAsync(id);

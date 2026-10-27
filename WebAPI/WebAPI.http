@@ -1,6 +1,142 @@
 @WebAPI_HostAddress = http://localhost:5053
+@LoaiId = 999999
+@SanPhamId = 999999
 
-GET {{WebAPI_HostAddress}}/weatherforecast/
+# GET requests are read-only. POST, PUT and DELETE requests below can change SQL Server data.
+# Run write requests only when you intend to modify the database.
+
+GET {{WebAPI_HostAddress}}/api/loai?page=1&pageSize=10&sortBy=id&sortOrder=asc
 Accept: application/json
 
 ###
+
+# Change @LoaiId to an existing ID for 200; the default 999999 demonstrates 404.
+GET {{WebAPI_HostAddress}}/api/loai/{{LoaiId}}
+Accept: application/json
+
+###
+
+# Invalid page size: expected 400 ProblemDetails.
+GET {{WebAPI_HostAddress}}/api/loai?page=1&pageSize=101
+Accept: application/json
+
+###
+
+GET {{WebAPI_HostAddress}}/api/sanpham?page=1&pageSize=10&sortBy=id&sortOrder=asc
+Accept: application/json
+
+###
+
+GET {{WebAPI_HostAddress}}/api/sanpham?search=tai%20nghe&loaiId=1&page=1&pageSize=10&sortBy=gia&sortOrder=desc
+Accept: application/json
+
+###
+
+# Change @SanPhamId to an existing ID for 200; the default 999999 demonstrates 404.
+GET {{WebAPI_HostAddress}}/api/sanpham/{{SanPhamId}}
+Accept: application/json
+
+###
+
+# Invalid sorting field: expected 400 ProblemDetails.
+GET {{WebAPI_HostAddress}}/api/sanpham?sortBy=khongHopLe
+Accept: application/json
+
+###
+
+# Create a category. Expected 201 Created. Running this writes to SQL Server.
+POST {{WebAPI_HostAddress}}/api/loai
+Content-Type: application/json
+
+{
+  "ten": "Loai HTTP demo M5",
+  "mota": "Du lieu mau tao tu WebAPI.http"
+}
+
+###
+
+# Repeat the preceding category create to see 409 Conflict (after the first POST succeeded).
+POST {{WebAPI_HostAddress}}/api/loai
+Content-Type: application/json
+
+{
+  "ten": "Loai HTTP demo M5",
+  "mota": "Du lieu mau tao tu WebAPI.http"
+}
+
+###
+
+# Empty category name: expected 400 ProblemDetails; no row should be created.
+POST {{WebAPI_HostAddress}}/api/loai
+Content-Type: application/json
+
+{
+  "ten": "   ",
+  "mota": "Input khong hop le"
+}
+
+###
+
+# Change @LoaiId to an existing category ID to exercise a successful update (200).
+# The default 999999 ID safely demonstrates 404 without updating a row.
+PUT {{WebAPI_HostAddress}}/api/loai/{{LoaiId}}
+Content-Type: application/json
+
+{
+  "ten": "Loai HTTP demo M5 da cap nhat",
+  "mota": "Cap nhat tu WebAPI.http"
+}
+
+###
+
+# Change @LoaiId to a category with products to receive 409; default ID returns 404.
+DELETE {{WebAPI_HostAddress}}/api/loai/{{LoaiId}}
+Accept: application/json
+
+# Create a product in seeded category 1. Expected 201 Created. Running this writes to SQL Server.
+POST {{WebAPI_HostAddress}}/api/sanpham
+Content-Type: application/json
+
+{
+  "tenSP": "San pham HTTP demo M5",
+  "moTaSP": "Du lieu mau tao tu WebAPI.http",
+  "gia": 125000,
+  "soLuong": 5,
+  "loaiId": 1
+}
+
+###
+
+# Empty product name: expected 400 ProblemDetails; no row should be created.
+POST {{WebAPI_HostAddress}}/api/sanpham
+Content-Type: application/json
+
+{
+  "tenSP": "   ",
+  "moTaSP": "Input khong hop le",
+  "gia": 10000,
+  "soLuong": 1,
+  "loaiId": 1
+}
+
+###
+
+# Change @SanPhamId to an existing product ID to exercise a successful update (200).
+# The default 999999 ID safely demonstrates 404 without updating a row.
+PUT {{WebAPI_HostAddress}}/api/sanpham/{{SanPhamId}}
+Content-Type: application/json
+
+{
+  "tenSP": "San pham HTTP demo M5 da cap nhat",
+  "moTaSP": "Cap nhat tu WebAPI.http",
+  "gia": 130000,
+  "soLuong": 7,
+  "loaiId": 1
+}
+
+###
+
+# Change @SanPhamId to an existing product ID to delete it (204).
+# The default 999999 ID safely demonstrates 404 without deleting a row.
+DELETE {{WebAPI_HostAddress}}/api/sanpham/{{SanPhamId}}
+Accept: application/json

@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>QLSanPham-WebAPI-Week4-Local</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

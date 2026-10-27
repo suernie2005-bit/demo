@@ -2,7 +2,6 @@
 using WebAPI.Data;
 using WebAPI.DTOs.Common;
 using WebAPI.DTOs.Loai;
-using WebAPI.Exceptions;
 using WebAPI.Models;
 using WebAPI.Services.Interfaces;
 
@@ -19,27 +18,46 @@ public class LoaiService : ILoaiService
         _logger = logger;
     }
 
-    public async Task<PagedResultDto<LoaiDto>> GetAllAsync( int page,int pageSize,string? sortBy,string? sortOrder)
+    public async Task<PagedResultDto<LoaiDto>> GetAllAsync(
+        int page,
+        int pageSize,
+        string? sortBy,
+        string? sortOrder)
     {
         ValidatePaging(page, pageSize);
 
         IQueryable<Loai> query = _context.Loais.AsNoTracking();
 
-        bool descending = string.Equals(
-            sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
-
-        query = (sortBy ?? "id").ToLowerInvariant() switch
+        string normalizedSortOrder = (sortOrder ?? "asc").Trim().ToLowerInvariant();
+        bool descending = normalizedSortOrder switch
         {
-            "ten" => descending? query.OrderByDescending(x => x.Ten): query.OrderBy(x => x.Ten),
+            "asc" => false,
+            "desc" => true,
+            _ => throw new ArgumentException(
+                "sortOrder chỉ hỗ trợ asc hoặc desc.")
+        };
 
-            "id" => descending? query.OrderByDescending(x => x.Id): query.OrderBy(x => x.Id),
+        string normalizedSortBy = (sortBy ?? "id").Trim().ToLowerInvariant();
+        query = normalizedSortBy switch
+        {
+            "ten" => descending
+                ? query.OrderByDescending(x => x.Ten)
+                : query.OrderBy(x => x.Ten),
 
-            _ => throw new ArgumentException("sortBy chỉ hỗ trợ id hoặc ten.")
+            "id" => descending
+                ? query.OrderByDescending(x => x.Id)
+                : query.OrderBy(x => x.Id),
+
+            _ => throw new ArgumentException(
+                "sortBy chỉ hỗ trợ id hoặc ten.")
         };
 
         int totalItems = await query.CountAsync();
+        long offset = ((long)page - 1) * pageSize;
 
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).Select(x => new LoaiDto
+        var items = offset > int.MaxValue
+            ? new List<LoaiDto>()
+            : await query.Skip((int)offset).Take(pageSize).Select(x => new LoaiDto
             {
                 Id = x.Id,
                 Ten = x.Ten,
@@ -70,13 +88,13 @@ public class LoaiService : ILoaiService
 
     public async Task<LoaiDto> CreateAsync(CreateLoaiDto dto)
     {
-        string ten = dto.Ten.Trim();
+        string ten = NormalizeRequiredName(dto.Ten);
 
         bool exists = await _context.Loais.AnyAsync(x => x.Ten == ten);
 
         if (exists)
         {
-            throw new ConflictException(
+            throw new InvalidOperationException(
                 "Tên loại đã tồn tại.");
         }
 
@@ -111,13 +129,13 @@ public class LoaiService : ILoaiService
                 $"Không tìm thấy loại có ID {id}.");
         }
 
-        string ten = dto.Ten.Trim();
+        string ten = NormalizeRequiredName(dto.Ten);
 
         bool duplicate = await _context.Loais.AnyAsync(x => x.Id != id && x.Ten == ten);
 
         if (duplicate)
         {
-            throw new ConflictException(
+            throw new InvalidOperationException(
                 "Tên loại đã tồn tại.");
         }
 
@@ -148,7 +166,7 @@ public class LoaiService : ILoaiService
 
         if (hasProducts)
         {
-            throw new ConflictException(
+            throw new InvalidOperationException(
                 "Không thể xóa loại đang có sản phẩm.");
         }
 
@@ -172,5 +190,17 @@ public class LoaiService : ILoaiService
             throw new ArgumentException(
                 "pageSize phải nằm trong khoảng từ 1 đến 100.");
         }
+    }
+
+    private static string NormalizeRequiredName(string? name)
+    {
+        string normalizedName = name?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            throw new ArgumentException("Tên loại không được để trống.");
+        }
+
+        return normalizedName;
     }
 }

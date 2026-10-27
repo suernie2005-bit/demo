@@ -2,7 +2,6 @@
 using WebAPI.Data;
 using WebAPI.DTOs.Common;
 using WebAPI.DTOs.SanPham;
-using WebAPI.Exceptions;
 using WebAPI.Models;
 using WebAPI.Services.Interfaces;
 
@@ -19,11 +18,22 @@ public class SanPhamService : ISanPhamService
         _logger = logger;
     }
 
-    public async Task<PagedResultDto<SanPhamDto>> GetAllAsync(int page,int pageSize,string? search,string? sortBy, string? sortOrder, int? loaiId)
+    public async Task<PagedResultDto<SanPhamDto>> GetAllAsync(
+        int page,
+        int pageSize,
+        string? search,
+        string? sortBy,
+        string? sortOrder,
+        int? loaiId)
     {
         ValidatePaging(page, pageSize);
 
-        IQueryable<SanPham> query =_context.SanPhams.AsNoTracking();
+        if (loaiId is < 1)
+        {
+            throw new ArgumentException("loaiId phải lớn hơn hoặc bằng 1.");
+        }
+
+        IQueryable<SanPham> query = _context.SanPhams.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -37,26 +47,48 @@ public class SanPhamService : ISanPhamService
             query = query.Where(x => x.LoaiId == loaiId.Value);
         }
 
-        bool descending = string.Equals(sortOrder, "desc",StringComparison.OrdinalIgnoreCase);
-
-        query = (sortBy ?? "id").ToLowerInvariant() switch
+        string normalizedSortOrder = (sortOrder ?? "asc").Trim().ToLowerInvariant();
+        bool descending = normalizedSortOrder switch
         {
-            "id" => descending ? query.OrderByDescending(x => x.Id): query.OrderBy(x => x.Id),
+            "asc" => false,
+            "desc" => true,
+            _ => throw new ArgumentException(
+                "sortOrder chỉ hỗ trợ asc hoặc desc.")
+        };
 
-            "tensp" => descending ? query.OrderByDescending(x => x.TenSp): query.OrderBy(x => x.TenSp),
+        string normalizedSortBy = (sortBy ?? "id").Trim().ToLowerInvariant();
+        query = normalizedSortBy switch
+        {
+            "id" => descending
+                ? query.OrderByDescending(x => x.Id)
+                : query.OrderBy(x => x.Id),
 
-            "gia" => descending ? query.OrderByDescending(x => x.Gia): query.OrderBy(x => x.Gia),
+            "tensp" => descending
+                ? query.OrderByDescending(x => x.TenSp)
+                : query.OrderBy(x => x.TenSp),
 
-            "soluong" => descending? query.OrderByDescending(x => x.SoLuong): query.OrderBy(x => x.SoLuong),
+            "gia" => descending
+                ? query.OrderByDescending(x => x.Gia)
+                : query.OrderBy(x => x.Gia),
 
-            "ngay" => descending? query.OrderByDescending(x => x.Ngay): query.OrderBy(x => x.Ngay),
+            "soluong" => descending
+                ? query.OrderByDescending(x => x.SoLuong)
+                : query.OrderBy(x => x.SoLuong),
 
-            _ => throw new ArgumentException("sortBy chỉ hỗ trợ id, tenSP, gia, soLuong hoặc ngay.")
+            "ngay" => descending
+                ? query.OrderByDescending(x => x.Ngay)
+                : query.OrderBy(x => x.Ngay),
+
+            _ => throw new ArgumentException(
+                "sortBy chỉ hỗ trợ id, tenSP, gia, soLuong hoặc ngay.")
         };
 
         int totalItems = await query.CountAsync();
+        long offset = ((long)page - 1) * pageSize;
 
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).Select(x => new SanPhamDto
+        var items = offset > int.MaxValue
+            ? new List<SanPhamDto>()
+            : await query.Skip((int)offset).Take(pageSize).Select(x => new SanPhamDto
             {
                 Id = x.Id,
                 TenSP = x.TenSp,
@@ -97,7 +129,7 @@ public class SanPhamService : ISanPhamService
     public async Task<SanPhamDto> CreateAsync(
         CreateSanPhamDto dto)
     {
-        string ten = dto.TenSP.Trim();
+        string ten = NormalizeRequiredName(dto.TenSP);
 
         bool loaiExists = await _context.Loais.AnyAsync(x => x.Id == dto.LoaiId);
 
@@ -110,7 +142,7 @@ public class SanPhamService : ISanPhamService
 
         if (duplicate)
         {
-            throw new ConflictException("Sản phẩm cùng tên trong loại này đã tồn tại.");
+            throw new InvalidOperationException("Sản phẩm cùng tên trong loại này đã tồn tại.");
         }
 
         var sanPham = new SanPham
@@ -148,13 +180,13 @@ public class SanPhamService : ISanPhamService
             throw new ArgumentException("Loại sản phẩm được chọn không tồn tại.");
         }
 
-        string ten = dto.TenSP.Trim();
+        string ten = NormalizeRequiredName(dto.TenSP);
 
         bool duplicate = await _context.SanPhams.AnyAsync(x =>x.Id != id && x.TenSp == ten && x.LoaiId == dto.LoaiId);
 
         if (duplicate)
         {
-            throw new ConflictException("Sản phẩm cùng tên trong loại này đã tồn tại.");
+            throw new InvalidOperationException("Sản phẩm cùng tên trong loại này đã tồn tại.");
         }
 
         sanPham.TenSp = ten;
@@ -194,5 +226,17 @@ public class SanPhamService : ISanPhamService
         {
             throw new ArgumentException("pageSize phải nằm trong khoảng từ 1 đến 100.");
         }
+    }
+
+    private static string NormalizeRequiredName(string? name)
+    {
+        string normalizedName = name?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            throw new ArgumentException("Tên sản phẩm không được để trống.");
+        }
+
+        return normalizedName;
     }
 }
