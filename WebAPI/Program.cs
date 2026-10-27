@@ -1,37 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore;
-using WebAPI.Data;
-using WebAPI.Services;
-using WebAPI.Services.Interfaces;
+using WebAPI.Authorization;
+using WebAPI.Exceptions;
+using QLSanPham.Application;
+using QLSanPham.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.Services.AddProblemDetails();
 
-// Swagger / OpenAPI.
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddApiDocumentation();
 
-var connectionString =
-    builder.Configuration.GetConnectionString("DefaultConnection");
-
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException(
-        "Chưa cấu hình ConnectionStrings:DefaultConnection.");
-}
-
-builder.Services.AddDbContext<QLSanPhamDBContext>(options =>
-    options.UseSqlServer(connectionString));
-
-builder.Services.AddScoped<ILoaiService, LoaiService>();
-builder.Services.AddScoped<ISanPhamService, SanPhamService>();
-
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddJwtAuthenticationAndCatalogAuthorization();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -40,6 +30,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

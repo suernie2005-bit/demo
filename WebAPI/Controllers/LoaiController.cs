@@ -1,6 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using WebAPI.DTOs.Loai;
-using WebAPI.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using WebAPI.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using MediatR;
+using QLSanPham.Application.Features.Loai.Commands;
+using QLSanPham.Application.Features.Loai.Queries;
+using QLSanPham.Application.DTOs.Common;
+using QLSanPham.Application.DTOs.Loai;
 
 namespace WebAPI.Controllers;
 
@@ -8,47 +13,89 @@ namespace WebAPI.Controllers;
 [Route("api/[controller]")]
 public class LoaiController : ControllerBase
 {
-    private readonly ILoaiService _service;
+    private readonly ISender _sender;
 
-    public LoaiController(ILoaiService service)
+    public LoaiController(ISender sender)
     {
-        _service = service;
+        _sender = sender;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int page = 1,[FromQuery] int pageSize = 10,[FromQuery] string? sortBy = "id",[FromQuery] string? sortOrder = "asc")
+    [ProducesResponseType(typeof(PagedResultDto<LoaiDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? sortBy = "id",
+        [FromQuery] string? sortOrder = "asc",
+        CancellationToken cancellationToken = default)
     {
-        var result = await _service.GetAllAsync(page, pageSize, sortBy, sortOrder);
+        var result = await _sender.Send(
+            new GetLoaiListQuery(page, pageSize, sortBy, sortOrder),
+            cancellationToken);
 
         return Ok(result);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [ProducesResponseType(typeof(LoaiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-        var result = await _service.GetByIdAsync(id);
+        var result = await _sender.Send(new GetLoaiByIdQuery(id), cancellationToken);
         return Ok(result);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateLoaiDto dto)
+    [Authorize(Policy = JwtAuthenticationRegistration.CatalogWritePolicy)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(LoaiDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Create(
+        [FromBody] CreateLoaiDto dto,
+        CancellationToken cancellationToken)
     {
-        var result = await _service.CreateAsync(dto);
+        var result = await _sender.Send(new CreateLoaiCommand(dto), cancellationToken);
 
         return CreatedAtAction(nameof(GetById),new { id = result.Id },result);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update( int id,[FromBody] UpdateLoaiDto dto)
+    [Authorize(Policy = JwtAuthenticationRegistration.CatalogWritePolicy)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(LoaiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Update(
+        int id,
+        [FromBody] UpdateLoaiDto dto,
+        CancellationToken cancellationToken)
     {
-        var result = await _service.UpdateAsync(id, dto);
+        var result = await _sender.Send(new UpdateLoaiCommand(id, dto), cancellationToken);
         return Ok(result);
     }
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [Authorize(Policy = JwtAuthenticationRegistration.CatalogWritePolicy)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        await _service.DeleteAsync(id);
+        await _sender.Send(new DeleteLoaiCommand(id), cancellationToken);
         return NoContent();
     }
 }
